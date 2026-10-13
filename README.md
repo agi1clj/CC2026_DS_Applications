@@ -112,6 +112,8 @@ curl -i http://localhost:8000/api/data/BAD_ID!        # 422 validation error
 | `GET /health` | `200` `{"status":"ok","version":"<git sha>"...}` | – |
 | `GET /api/data` | `200` list of measurements | `422` invalid `device_id` filter |
 | `GET /api/data/{device_id}` | `200` measurements of one device | `404` unknown device, `422` invalid ID |
+| `GET /api/devices` | `200` sorted device IDs | – |
+| `GET /api/stats` | `200` per-device reading count and averages | – |
 
 ## 7. How the Dockerfiles work
 
@@ -193,8 +195,9 @@ The exact URLs are printed by the Terraform workflow (*Summary* tab) and by `ter
 
 | Reference deployment | URL |
 |---|---|
-| Frontend | _fill in after deployment_ |
-| Backend | _fill in after deployment_ |
+| Frontend | https://cc2026-ui-agi-dev-465d.azurewebsites.net |
+| Backend | https://cc2026-api-agi-dev-465d.azurewebsites.net/api/data |
+| API docs | https://cc2026-api-agi-dev-465d.azurewebsites.net/docs |
 
 ## 14. Troubleshooting
 
