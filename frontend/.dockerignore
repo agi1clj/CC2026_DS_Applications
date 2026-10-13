@@ -1,0 +1,12 @@
+# node_modules and dist are recreated inside the build stage.
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+.env
+.env.*
+.git
+.gitignore
+Dockerfile
+.dockerignore
+*.md

@@ -1,0 +1,32 @@
+# Local development stack: docker compose up --build
+#   Frontend: http://localhost:3000
+#   Backend:  http://localhost:8000  (API docs: http://localhost:8000/docs)
+#
+# Note: API_BASE_URL is used by the *browser*, which runs on your machine, not inside
+# the Docker network. It must therefore be http://localhost:8000, not http://backend:8000.
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        APP_VERSION: local
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:8080"
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_healthy

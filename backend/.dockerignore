@@ -1,0 +1,15 @@
+# Only app/ and requirements.txt are needed in the image.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+tests/
+requirements-dev.txt
+.env
+.env.*
+.git
+.gitignore
+Dockerfile
+.dockerignore
+*.md

@@ -1,0 +1,4 @@
+# Test dependencies (used by CI and local testing, not installed in the image)
+-r requirements.txt
+pytest==9.1.1
+httpx2==2.13.1
