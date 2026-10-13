@@ -71,7 +71,7 @@ docker compose up --build
 
 | URL | What you should see |
 |---|---|
-| http://localhost:3000 | Dashboard with a table of 7 measurements |
+| http://localhost:3000 | Dashboard with summary tiles and a table of measurements |
 | http://localhost:8000/api/data | JSON list of measurements |
 | http://localhost:8000/docs | Interactive API documentation (Swagger UI) |
 
