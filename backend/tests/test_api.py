@@ -19,7 +19,7 @@ def test_list_measurements_returns_all_devices():
     data = response.json()
     assert len(data) > 0
     assert {"device_id", "timestamp", "temperature", "humidity"} <= data[0].keys()
-    assert {m["device_id"] for m in data} == {"device-001", "device-002", "device-003", "device-004"}
+    assert {m["device_id"] for m in data} == {"device-001", "device-002", "device-003", "device-004", "device-005"}
 
 
 def test_list_measurements_with_query_filter():
@@ -31,7 +31,7 @@ def test_list_measurements_with_query_filter():
 def test_list_devices_is_sorted_and_unique():
     response = client.get("/api/devices")
     assert response.status_code == 200
-    assert response.json() == ["device-001", "device-002", "device-003", "device-004"]
+    assert response.json() == ["device-001", "device-002", "device-003", "device-004", "device-005"]
 
 
 def test_stats_returns_per_device_averages():
