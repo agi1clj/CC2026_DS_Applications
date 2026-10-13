@@ -34,6 +34,13 @@ def test_list_devices_is_sorted_and_unique():
     assert response.json() == ["device-001", "device-002", "device-003", "device-004"]
 
 
+def test_stats_returns_per_device_averages():
+    response = client.get("/api/stats")
+    assert response.status_code == 200
+    stats = {s["device_id"]: s for s in response.json()}
+    assert stats["device-002"] == {"device_id": "device-002", "readings": 2, "avg_temperature": 20.1, "avg_humidity": 60.5}
+
+
 def test_device_measurements_known_device():
     response = client.get("/api/data/device-001")
     assert response.status_code == 200

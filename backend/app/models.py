@@ -22,3 +22,12 @@ class Health(BaseModel):
     service: str
     version: str
     timestamp: datetime
+
+
+class DeviceStats(BaseModel):
+    """Aggregates of all readings of one device."""
+
+    device_id: str
+    readings: int
+    avg_temperature: float
+    avg_humidity: float
