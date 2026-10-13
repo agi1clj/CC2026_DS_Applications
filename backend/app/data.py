@@ -36,6 +36,8 @@ class InMemoryMeasurementSource:
         _reading("device-002", "2026-10-01T11:00:00+00:00", 20.4, 60),
         _reading("device-003", "2026-10-01T10:00:00+00:00", 27.3, 42),
         _reading("device-003", "2026-10-01T11:00:00+00:00", 28.0, 40),
+        _reading("device-004", "2026-10-01T10:00:00+00:00", 21.2, 58),
+        _reading("device-004", "2026-10-01T11:00:00+00:00", 21.9, 57),
     )
 
     def list_measurements(self) -> list[Measurement]:

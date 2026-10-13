@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { BackendVersion } from './components/BackendVersion'
 import { ALL_DEVICES, DeviceFilter } from './components/DeviceFilter'
 import { MeasurementsTable } from './components/MeasurementsTable'
 import { API_BASE_URL } from './config'
@@ -50,6 +51,7 @@ export default function App() {
 
       <footer className="footer">
         API: <code>{API_BASE_URL}</code>
+        <BackendVersion />
       </footer>
     </main>
   )

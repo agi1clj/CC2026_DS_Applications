@@ -6,6 +6,13 @@ export interface Measurement {
   humidity: number
 }
 
+/** Response of the backend GET /health endpoint. */
+export interface Health {
+  status: string
+  service: string
+  version: string
+}
+
 /** Shape of window.APP_CONFIG, written to /config.js when the container starts. */
 export interface RuntimeConfig {
   API_BASE_URL: string

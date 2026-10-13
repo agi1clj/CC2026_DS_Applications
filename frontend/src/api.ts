@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './config'
-import type { Measurement } from './types'
+import type { Health, Measurement } from './types'
 
 export class ApiError extends Error {}
 
@@ -20,4 +20,14 @@ export async function fetchMeasurements(signal?: AbortSignal): Promise<Measureme
     throw new ApiError(`Backend responded with HTTP ${response.status}`)
   }
   return (await response.json()) as Measurement[]
+}
+
+/** Fetches backend health; returns null instead of throwing (used only for display). */
+export async function fetchHealth(signal?: AbortSignal): Promise<Health | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, { signal })
+    return response.ok ? ((await response.json()) as Health) : null
+  } catch {
+    return null
+  }
 }
