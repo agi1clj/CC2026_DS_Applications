@@ -1,6 +1,6 @@
-# Architecture – CC2026 P1 Applications
+# Architecture – CC2026 Applications
 
-Diagrams below describe what is actually deployed. Nothing else (no database, no gateway, no monitoring service) is part of P1.
+Diagrams below describe what is actually deployed. Nothing else (no database, no gateway, no monitoring service) is deployed yet; later project parts extend this.
 
 ## Conceptual architecture
 

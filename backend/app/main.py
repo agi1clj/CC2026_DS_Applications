@@ -1,4 +1,4 @@
-"""Device measurements API (CC2026 Project Part 1).
+"""Device measurements API (CC2026 Cloud Computing project).
 
     GET /health                 liveness information used by Azure and CI/CD
     GET /api/data               all measurements (optional ?device_id= filter)
@@ -21,7 +21,7 @@ settings = get_settings()
 app = FastAPI(
     title="CC2026 Device Measurements API",
     version=settings.app_version,
-    description="Project Part 1 backend: serves device measurements as JSON.",
+    description="Serves device measurements as JSON.",
 )
 
 app.add_middleware(

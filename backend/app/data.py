@@ -1,7 +1,7 @@
 """Where measurements come from.
 
-The API depends only on the `MeasurementSource` interface. P1 uses the in-memory
-source below. In P2, add another implementation (e.g. one that reads processed
+The API depends only on the `MeasurementSource` interface. The in-memory
+source below. Later (P2), add another implementation (e.g. one that reads processed
 data from Azure Blob Storage) and return it from `get_measurement_source()`;
 the endpoints and their tests do not change.
 """
@@ -26,7 +26,7 @@ def _reading(device_id: str, timestamp: str, temperature: float, humidity: float
 
 
 class InMemoryMeasurementSource:
-    """Small static dataset; no database or external service is needed in P1."""
+    """Small static dataset; no database or external service needed."""
 
     _MEASUREMENTS = (
         _reading("device-001", "2026-10-01T10:00:00+00:00", 22.5, 55),

@@ -17,7 +17,7 @@ export default function App() {
       <header className="header">
         <div>
           <h1>Device Measurements Dashboard</h1>
-          <p className="subtitle">CC2026 · Project Part 1</p>
+          <p className="subtitle">CC2026 · Cloud Computing</p>
         </div>
         <div className="toolbar">
           <DeviceFilter devices={devices} value={device} disabled={loading || error !== null} onChange={setDevice} />
