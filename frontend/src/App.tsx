@@ -18,7 +18,7 @@ export default function App() {
     <main className="container">
       <header className="header">
         <div>
-          <h1>Device Measurements Dashboard</h1>
+          <h1>IoT Device Measurements</h1>
           <p className="subtitle">CC2026 · Cloud Computing</p>
         </div>
         <div className="toolbar">
