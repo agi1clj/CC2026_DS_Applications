@@ -2,7 +2,7 @@
 
 Application repository for the *Cloud Computing* project (UTCN, Master's in Data Science, 2026–2027).
 
-> Students: name your copy `CC2026_LastName_FirstName_Apps`. This reference copy is called `CC2026_DS_Apps`.
+> Students: name your copy `CC2026_LastName_FirstName_Apps`. This reference copy is called `CC2026_DS_Applications`.
 > The infrastructure lives in the companion repository `CC2026_LastName_FirstName_Infra`, which also has the full, step-by-step **Student Deployment Walkthrough** (`docs/student-walkthrough.md`).
 
 ## 1. Overview
