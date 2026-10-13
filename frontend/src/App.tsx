@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { BackendVersion } from './components/BackendVersion'
 import { ALL_DEVICES, DeviceFilter } from './components/DeviceFilter'
 import { MeasurementsTable } from './components/MeasurementsTable'
+import { SummaryTiles } from './components/SummaryTiles'
 import { API_BASE_URL } from './config'
 import { useMeasurements } from './hooks/useMeasurements'
 import './App.css'
@@ -45,6 +46,7 @@ export default function App() {
           <p className="summary">
             Showing {visible.length} of {measurements.length} measurements
           </p>
+          <SummaryTiles measurements={visible} />
           <MeasurementsTable measurements={visible} />
         </>
       )}
