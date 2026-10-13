@@ -20,3 +20,6 @@ Teaching project (UTCN Cloud Computing). Keep changes small and explainable to s
 - Workflows log in with OIDC (`azure/login`, `id-token: write`); do not add publish profiles or client secrets.
 - Pin dependency versions; keep `package-lock.json` in sync.
 - Commits follow Conventional Commits: `type(scope): summary` with type in feat, fix, docs, refactor, test, ci, build, chore (e.g. `fix(bootstrap): reuse existing state resource group`).
+
+## Agent skills (recommended)
+Claude Code offers the Azure skills automatically when you trust the folder (`.claude/settings.json`). Other agents: `npx skills add microsoft/azure-skills` (azure-diagnostics helps with App Service container start-up issues; this project does not use azd).
