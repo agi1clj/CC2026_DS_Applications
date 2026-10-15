@@ -46,7 +46,7 @@ frontend/
     api.ts                 HTTP call to the backend
     config.ts              reads the runtime API URL
     hooks/useMeasurements.ts  loading / error / data state
-    components/            DeviceFilter, MeasurementsTable
+    components/            DeviceFilter, MeasurementsTable, SummaryTiles, BackendVersion
     types.ts               shared TypeScript types
   public/config.js         runtime config for `npm run dev`
   docker/40-runtime-config.sh  writes config.js when the container starts
@@ -83,17 +83,23 @@ docker compose down
 
 If port 3000 or 8000 is taken, copy `.env.example` to `.env` and change the ports there.
 
-Without Docker:
+> **macOS (zsh):** the commands in this README have `# comments` at the end of the line. Default zsh does not treat `#` as a comment in the terminal and passes it to the command. Run `setopt interactivecomments` once (add it to `~/.zshrc` to make it permanent). On Windows, run everything inside WSL2 (Ubuntu).
+
+Without Docker (Python 3.15 and Node.js 26):
 
 ```bash
-# backend
-cd backend && python -m venv .venv && source .venv/bin/activate
+# backend: create a virtual environment, run the tests, start the API on http://localhost:8000
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements-dev.txt
-python -m pytest                       # run the tests
-uvicorn app.main:app --reload          # http://localhost:8000
+python -m pytest
+uvicorn app.main:app --reload
 
-# frontend (second terminal)
-cd frontend && npm ci && npm run dev   # http://localhost:3000
+# frontend, in a second terminal: http://localhost:3000
+cd frontend
+npm ci
+npm run dev
 ```
 
 ## 6. Test the endpoints
@@ -103,13 +109,13 @@ curl http://localhost:8000/health
 curl http://localhost:8000/api/data
 curl "http://localhost:8000/api/data?device_id=device-002"
 curl http://localhost:8000/api/data/device-001
-curl -i http://localhost:8000/api/data/device-999     # 404 Device not found
-curl -i http://localhost:8000/api/data/BAD_ID!        # 422 validation error
+curl -i http://localhost:8000/api/data/device-999       # 404 Device not found
+curl -i 'http://localhost:8000/api/data/BAD_ID!'        # 422 validation error
 ```
 
 | Endpoint | Success | Errors |
 |---|---|---|
-| `GET /health` | `200` `{"status":"ok","version":"<git sha>"...}` | – |
+| `GET /health` | `200` `{"status":"ok","service":"cc2026-backend","version":"<git sha>","timestamp":…}` (`"local"` instead of the SHA when run locally) | – |
 | `GET /api/data` | `200` list of measurements | `422` invalid `device_id` filter |
 | `GET /api/data/{device_id}` | `200` measurements of one device | `404` unknown device, `422` invalid ID |
 | `GET /api/devices` | `200` sorted device IDs | – |
@@ -153,15 +159,17 @@ window.APP_CONFIG = { API_BASE_URL: "https://cc2026-api-agi-dev-1a2b.azurewebsit
 
 | Workflow | Trigger | Jobs |
 |---|---|---|
-| `backend.yml` | push to `main` touching `backend/**`; pull requests; manual | `test` (pytest) → `deploy` (main only) |
-| `frontend.yml` | push to `main` touching `frontend/**`; pull requests; manual | `build` (type-check + Vite build) → `deploy` (main only) |
+| `backend.yml` | push to `main` touching `backend/**`, `scripts/wait-for-version.sh` or the workflow file; pull requests touching `backend/**` or the workflow file; manual | `test` (pytest) → `deploy` |
+| `frontend.yml` | push to `main` touching `frontend/**`, `scripts/wait-for-version.sh` or the workflow file; pull requests touching `frontend/**` or the workflow file; manual | `build` (type-check + Vite build) → `deploy` |
+
+A push that changes only documentation starts no workflow. The `deploy` job runs only on `main` (never for pull requests) and only once `bootstrap.sh` has set the `AZURE_CLIENT_ID` variable; before that it is skipped and the run is still green.
 
 The `deploy` job:
 1. Signs in to Azure with **OIDC** (`azure/login`). GitHub issues a short-lived token that Azure trusts, so no password or secret is stored.
 2. `az acr login` and `docker build --build-arg APP_VERSION=<sha>`.
 3. Pushes `<image>:<commit-sha>` (immutable, deployed) and `<image>:latest` (only used when Terraform first creates the Web App).
 4. Points the Web App at the new tag: `az webapp config set --linux-fx-version "DOCKER|<acr>/<image>:<sha>"`.
-5. Polls `/health` (backend) or `/version.txt` (frontend) until the new commit SHA is served (up to ~10 minutes).
+5. Polls `/health` (backend) or `/version.txt` (frontend) until the new commit SHA is served (up to ~10–15 minutes).
 
 If the Web App does not exist yet (first deployment), steps 4–5 are skipped with a notice.
 
@@ -181,7 +189,15 @@ Ownership is split on purpose:
 - **Terraform** (Infra repo) creates the registry, the Web Apps and their settings. It sets the *initial* image (`:latest`) and then ignores later image changes (`ignore_changes` on the image name only).
 - **These workflows** decide *which* image version runs (`:<commit-sha>`).
 
-To roll back, re-run an older successful workflow run (*Actions → run → Re-run all jobs*). It redeploys that commit's image.
+To roll back, point the Web App at an older image that is still in ACR (every deployed commit has its `:<sha>` tag):
+
+```bash
+az acr repository show-tags --name <acr-name> --repository backend --orderby time_desc --output table
+az webapp config set --resource-group <rg> --name <backend-webapp> \
+  --linux-fx-version "DOCKER|<acr-name>.azurecr.io/backend:<old-sha>"
+```
+
+Re-running an older workflow run also works, but it rebuilds the image from source (base images may have changed) and overwrites `:latest`. The next push to `main` deploys the newest commit again.
 
 ## 13. Azure URLs
 
