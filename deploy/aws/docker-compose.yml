@@ -4,7 +4,7 @@
 # (API_BASE_URL, CORS_ORIGINS, ... set by the Infra repository) to .env next to this file.
 services:
   proxy:
-    # Routes /api/* and /health to the backend and everything else to the frontend,
+    # Routes /api/*, /health and /docs to the backend and everything else to the frontend,
     # like the path rules of a load balancer. Elastic Beanstalk sends traffic to port 80.
     image: public.ecr.aws/nginx/nginx:1.31-alpine
     ports:

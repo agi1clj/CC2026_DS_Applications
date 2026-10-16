@@ -254,7 +254,7 @@ With the AWS Infra repository (`..._Infra_AWS`), both containers run on **one** 
 |---|---|
 | Workflow | `deploy-aws.yml`: push to `main` touching `backend/**`, `frontend/**`, `deploy/aws/**` or the deploy scripts; manual. Jobs: `test-backend` + `build-frontend` → `deploy` |
 | Deploy | Builds and pushes **both** images as `<sha>` to ECR, fills them into `deploy/aws/docker-compose.yml`, zips it with `proxy/nginx.conf`, runs `scripts/deploy-beanstalk.sh`, then waits until `/health` and `/version.txt` report the SHA |
-| Routing | The `proxy` container (nginx, port 80) sends `/api/*` and `/health` to `backend:8000`, everything else to `frontend:8080`. One URL for both: `https://<id>.cloudfront.net` |
+| Routing | The `proxy` container (nginx, port 80) sends `/api/*`, `/health` and `/docs` to `backend:8000`, everything else to `frontend:8080`. One URL for both: `https://<id>.cloudfront.net` |
 | Settings | `API_BASE_URL` and `CORS_ORIGINS` are Elastic Beanstalk environment properties set by Terraform; Beanstalk writes them to `.env`, which Compose passes to the containers |
 | Variables | `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN`, `ECR_REPOSITORY_PREFIX`, `EB_APPLICATION`, `EB_ENVIRONMENT`, `EB_BUNDLE_BUCKET`, `AWS_APP_URL` (set by the AWS bootstrap). Without `AWS_DEPLOY_ROLE_ARN` the deploy job is skipped |
 | Logs | Elastic Beanstalk console → *Logs*, or CloudWatch `/aws/elasticbeanstalk/<environment>/var/log/eb-docker/containers/...` |
