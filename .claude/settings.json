@@ -1,8 +1,10 @@
 {
   "extraKnownMarketplaces": {
-    "azure-skills": { "source": { "source": "github", "repo": "microsoft/azure-skills" } }
+    "azure-skills": { "source": { "source": "github", "repo": "microsoft/azure-skills" } },
+    "agent-toolkit-for-aws": { "source": { "source": "github", "repo": "aws/agent-toolkit-for-aws" } }
   },
   "enabledPlugins": {
-    "azure@azure-skills": true
+    "azure@azure-skills": true,
+    "aws-core@agent-toolkit-for-aws": true
   }
 }

@@ -4,6 +4,7 @@ Application repository for the *Cloud Computing* project (UTCN, Master's in Data
 
 > Students: name your copy `CC2026_LastName_FirstName_Apps`. This reference copy is called `CC2026_DS_Applications`.
 > The infrastructure lives in the companion repository `CC2026_LastName_FirstName_Infra`, which also has the full, step-by-step **Student Deployment Walkthrough** (`docs/student-walkthrough.md`).
+> On **AWS** instead (or as well): `CC2026_LastName_FirstName_Infra_AWS`; see [section 17](#17-aws-elastic-beanstalk).
 
 ## 1. Overview
 
@@ -53,7 +54,9 @@ frontend/
   nginx.conf               Nginx site (SPA routing, /healthz, caching)
   Dockerfile               multi-stage: Node build → Nginx runtime
 scripts/wait-for-version.sh  used by CI to wait for a deployment
-.github/workflows/         backend.yml, frontend.yml
+scripts/deploy-beanstalk.sh  AWS: deploys a bundle to Elastic Beanstalk
+deploy/aws/                AWS bundle: docker-compose.yml + proxy/nginx.conf
+.github/workflows/         backend.yml, frontend.yml (Azure), deploy-aws.yml (AWS)
 docker-compose.yml         local stack
 ```
 
@@ -242,3 +245,17 @@ The infrastructure side is described in the Infra repository: `docs/extending.md
 docker compose down          # stop and remove containers + network
 docker compose down --rmi local   # also remove the locally built images
 ```
+
+## 17. AWS (Elastic Beanstalk)
+
+With the AWS Infra repository (`..._Infra_AWS`), both containers run on **one** Elastic Beanstalk instance behind CloudFront (HTTPS). The images are the same as for Azure; only the packaging differs.
+
+| | |
+|---|---|
+| Workflow | `deploy-aws.yml`: push to `main` touching `backend/**`, `frontend/**`, `deploy/aws/**` or the deploy scripts; manual. Jobs: `test-backend` + `build-frontend` → `deploy` |
+| Deploy | Builds and pushes **both** images as `<sha>` to ECR, fills them into `deploy/aws/docker-compose.yml`, zips it with `proxy/nginx.conf`, runs `scripts/deploy-beanstalk.sh`, then waits until `/health` and `/version.txt` report the SHA |
+| Routing | The `proxy` container (nginx, port 80) sends `/api/*` and `/health` to `backend:8000`, everything else to `frontend:8080`. One URL for both: `https://<id>.cloudfront.net` |
+| Settings | `API_BASE_URL` and `CORS_ORIGINS` are Elastic Beanstalk environment properties set by Terraform; Beanstalk writes them to `.env`, which Compose passes to the containers |
+| Variables | `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN`, `ECR_REPOSITORY_PREFIX`, `EB_APPLICATION`, `EB_ENVIRONMENT`, `EB_BUNDLE_BUCKET`, `AWS_APP_URL` (set by the AWS bootstrap). Without `AWS_DEPLOY_ROLE_ARN` the deploy job is skipped |
+| Logs | Elastic Beanstalk console → *Logs*, or CloudWatch `/aws/elasticbeanstalk/<environment>/var/log/eb-docker/containers/...` |
+| Rollback | Elastic Beanstalk console → *Application versions* → select an older `<sha>` → *Deploy* |
