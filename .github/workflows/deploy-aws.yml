@@ -1,0 +1,127 @@
+# AWS CI/CD: test both apps -> build both images -> push to ECR -> deploy one bundle to
+# Elastic Beanstalk (both containers run on one instance, so they are always deployed together).
+# Runs next to backend.yml / frontend.yml (Azure). It deploys only when the AWS Infra
+# bootstrap has set the repository variable AWS_DEPLOY_ROLE_ARN. Pull requests are tested
+# by backend.yml / frontend.yml.
+name: deploy-aws
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "deploy/aws/**"
+      - "scripts/deploy-beanstalk.sh"
+      - "scripts/wait-for-version.sh"
+      - ".github/workflows/deploy-aws.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never run two deployments at the same time.
+concurrency:
+  group: deploy-aws-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -v
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check and build
+        run: npm run build
+
+  deploy:
+    needs: [test-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required to request the GitHub OIDC token for AWS
+    env:
+      TAG: ${{ github.sha }}
+      REPOSITORY_PREFIX: ${{ vars.ECR_REPOSITORY_PREFIX }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: AWS login (OIDC, no secrets)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # The instance is x86_64 (t3), the same architecture as GitHub's runners.
+      # The commit SHA tag is what gets deployed; "latest" is only a convenience.
+      - name: Build and push images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          for app in backend frontend; do
+            image="$REGISTRY/$REPOSITORY_PREFIX/$app"
+            docker build --build-arg APP_VERSION="$TAG" --tag "$image:$TAG" --tag "$image:latest" "$app"
+            docker push "$image:$TAG"
+            docker push "$image:latest"
+          done
+          echo "BACKEND_IMAGE=$REGISTRY/$REPOSITORY_PREFIX/backend:$TAG" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=$REGISTRY/$REPOSITORY_PREFIX/frontend:$TAG" >> "$GITHUB_ENV"
+
+      - name: Create the deployment bundle
+        run: |
+          mkdir -p bundle
+          cp -r deploy/aws/. bundle/
+          sed -i "s|__BACKEND_IMAGE__|$BACKEND_IMAGE|; s|__FRONTEND_IMAGE__|$FRONTEND_IMAGE|" bundle/docker-compose.yml
+          grep -q "__" bundle/docker-compose.yml && { echo "::error::Unreplaced placeholder in docker-compose.yml"; exit 1; }
+          (cd bundle && zip -qr ../bundle.zip .)
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          ./scripts/deploy-beanstalk.sh "${{ vars.EB_APPLICATION }}" "${{ vars.EB_ENVIRONMENT }}" \
+            "${{ vars.EB_BUNDLE_BUCKET }}" bundle.zip "$TAG"
+
+      - name: Verify /health and /version.txt report the new version
+        if: vars.AWS_APP_URL != ''
+        env:
+          APP_URL: ${{ vars.AWS_APP_URL }}
+        run: |
+          ./scripts/wait-for-version.sh "$APP_URL/health" "$TAG" 20 15
+          ./scripts/wait-for-version.sh "$APP_URL/version.txt" "$TAG" 20 15
+          echo "Deployed: $APP_URL" >> "$GITHUB_STEP_SUMMARY"
