@@ -1,5 +1,7 @@
 # P2 challenge: show the pipeline results in the app
 
+You received this brief and the sample data with the Apps patch (the Infra walkthrough, last step, shows the `gh pr diff <PR-number> --repo agi1clj/CC2026_DS_Applications | git apply` command). Do the pipeline part in the Infra repo first, or build the UI now with the sample files.
+
 Connect this repository to the **gold** zone of your P2 pipeline. The backend reads three JSON files. The frontend shows a table and charts. You write the code.
 
 1. **Infra repository.** The pipeline gives you `daily_energy_by_device.json` and `latest_readings.json`. You build only `energy_by_location.json`. See "Your part" in `docs/p2/student-walkthrough.md` of the Infra repository.
