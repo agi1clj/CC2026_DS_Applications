@@ -203,7 +203,7 @@ Optional: hand-made SVG also works, but it takes longer. Pie chart: `<PieChart>`
 
 ## 6. Acceptance checklist
 
-- [ ] A CSV upload runs the pipeline. Teams shows SUCCEEDED. `energy_invalid.csv` shows FAILED.
+- [ ] A CSV upload runs the pipeline. Teams shows SUCCEEDED.
 - [ ] The backend serves gold data through the new endpoints. The frontend shows the table, device filter and 2 charts, with loading and error states.
 - [ ] `README.md` has an architecture diagram, steps, and screenshots of the pipeline run, the Teams card and the app. Gold sample output is in the repository.
 - [ ] `python -m pytest` and `npm run build` pass. Commits are small and follow Conventional Commits.
