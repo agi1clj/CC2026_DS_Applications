@@ -2,15 +2,14 @@
 
 Connect this repository to the **gold** zone of your P2 pipeline. The backend reads three JSON files. The frontend shows a table and charts. You write the code.
 
-1. **Infra repository.** Build `energy_by_location.json` and `latest_readings.json`. The template gives you `daily_energy_by_device.json`.
+1. **Infra repository.** The pipeline gives you `daily_energy_by_device.json` and `latest_readings.json`. You build only `energy_by_location.json`. See "Your part" in `docs/p2/student-walkthrough.md` of the Infra repository.
 2. **Backend.** Read the gold files with the managed identity. Serve them through new endpoints.
 3. **Frontend.** Show a table and charts.
 
-Compare your output with `docs/p2/sample-data/gold/latest/`. Use these files to build the app before your pipeline works.
+The three files in `docs/p2/sample-data/gold/latest/` are the expected pipeline output. Compare your output with them. Use them to build the app before your pipeline works.
 
-- **Lab 2:** the gold files exist and the backend reads gold.
-- **Homework:** the frontend (table and at least 2 charts).
-- **Bonus:** a date range control, and your own gold file. It must group by time (hour, weekday or month). Document its schema in your README. Serve it and show it.
+- **Lab 2:** `energy_by_location.json` exists and the backend reads gold.
+- **Homework:** the frontend (table, device filter and at least 2 charts).
 
 The backend reads **gold only**.
 
@@ -50,17 +49,15 @@ Each run writes three JSON arrays to `gold/by-timestamp/<yyyyMMddTHHmmssZ>/<file
 6. Return `502` with a short message when storage fails. Never return a stack trace.
 7. Add settings to `app/config.py`. Pin `azure-identity`, `azure-storage-blob` and `boto3` in `requirements.txt`.
 8. Test with `app.dependency_overrides[get_measurement_source]` and a fake source. No test calls the cloud.
-9. Bonus: add an endpoint for your gold file. Add `from` and `to` (`YYYY-MM-DD`) to the daily endpoint. Return `422` for a bad date or `from` after `to`. `from` is a Python keyword: use `Query(alias="from")`.
 
 No keys. **Azure:** `DefaultAzureCredential`. **AWS:** `boto3`.
-
 ### Frontend (`frontend/src/`)
 
 1. Keep the table and device filter. The table shows the latest readings.
 2. Add `kwh` and `location` to `Measurement` in `types.ts`. Add types for the new endpoints.
 3. Add at least **2 charts** in `components/`. Use SVG or a small library such as recharts.
 4. Show loading and error states for each call. Show timestamps in local time or with "UTC".
-5. Use `API_BASE_URL` from `config.ts`. Bonus: add a date range control (`from`, `to`).
+5. Use `API_BASE_URL` from `config.ts`.
 
 **Chart ideas:** kWh per day for one device (line), kWh share per location (donut), temperature against kWh (scatter), kWh by weekday (bar), hourly load (24 bars), top 10 days, monthly totals, cost (kWh x tariff), week-over-week change.
 
@@ -71,7 +68,6 @@ cd backend && pip install -r requirements-dev.txt && python -m pytest && uvicorn
 cd frontend && npm ci && npm run dev
 docker compose up --build                 # http://localhost:3000
 ```
-
 With no cloud env variables, the backend reads the sample files. The backend image copies only `backend/`: copy the samples into the image or mount a volume. Document your choice in your README.
 
 **Real cloud data.** Run your pipeline once. Never put keys in files. Terraform in the Infra repository gives the deployed backend its identity and env variables.
@@ -100,8 +96,8 @@ def _read_bytes(name: str) -> bytes:
             from azure.identity import DefaultAzureCredential
             from azure.storage.blob import BlobServiceClient
             _azure = BlobServiceClient(account_url, credential=DefaultAzureCredential())
-        container = os.getenv("GOLD_CONTAINER", "gold")
-        return _azure.get_blob_client(container, f"latest/{name}").download_blob().readall()
+        blob = _azure.get_blob_client(os.getenv("GOLD_CONTAINER", "gold"), f"latest/{name}")
+        return blob.download_blob().readall()
     if bucket := os.getenv("DATA_BUCKET"):  # AWS
         if _s3 is None:
             import boto3
@@ -134,7 +130,6 @@ class GoldMeasurementSource:
 ```
 
 `main.py` types `Source` as `MeasurementSource`, which lacks `energy_by_location()`. Add a second Protocol and use it as `GoldSource`.
-
 ```python
 @app.get("/api/energy/by-location", response_model=list[LocationEnergy], tags=["energy"])
 def energy_by_location(source: GoldSource) -> list[LocationEnergy]:
@@ -182,7 +177,6 @@ export function Donut({ slices }: { slices: { label: string; value: number }[] }
 Hint: stroke width 20, `strokeDasharray="<length> <rest>"`, `strokeDashoffset={-offset}`, `transform="rotate(-90 50 50)"`. Add the legend as an HTML list.
 
 Second chart: scale with `x = (value - min) / (max - min) * width`. Draw a `<polyline>` or `<rect>` elements.
-
 ## 5. Watch out
 
 - Do not read bronze or silver. Do not send 500,000 rows to the browser.
@@ -190,14 +184,19 @@ Second chart: scale with `x = (value - min) / (max - min) * width`. Draw a `<pol
 - Do not call the cloud in tests. Keep the in-memory source as default: P1 tests use it.
 - Do not change ports 8000 and 8080. Terraform uses them.
 - The device filter uses the loaded rows. Daily charts need their own device list.
-- Reject bad gold data with a clear error.
 
 ## 6. Acceptance checklist
 
 - [ ] A CSV upload runs the pipeline. Teams shows SUCCEEDED. `energy_invalid.csv` shows FAILED.
 - [ ] The backend serves gold data through the new endpoints. The frontend shows the table, device filter and 2 charts, with loading and error states.
 - [ ] `README.md` has an architecture diagram, steps, and screenshots of the pipeline run, the Teams card and the app. Gold sample output is in the repository.
-- [ ] Bonus: date range control, and your own gold file with a documented schema.
 - [ ] `python -m pytest` and `npm run build` pass. Commits are small and follow Conventional Commits.
+
+## 7. Bonus
+
+- Add `from` and `to` (`YYYY-MM-DD`) to the daily and latest endpoints. Return `422` for a bad date or `from` after `to`. `from` is a Python keyword: use `Query(alias="from")`.
+- Add a date range control to the charts.
+- Add your own gold file that groups by time (hour, weekday or month). Document its schema in your README. Serve it and show it.
+- Show when the data was generated. List `gold/by-timestamp/` to find the newest run.
 
 Pipeline side: see `docs/p2/student-walkthrough.md` in the Infra repository.
