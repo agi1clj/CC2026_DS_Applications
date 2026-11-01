@@ -1,6 +1,6 @@
 # P2 challenge: show the pipeline results in the app
 
-You received this brief and the sample data with the Apps patch (the Infra walkthrough, last step, shows the `gh pr diff <PR-number> --repo agi1clj/CC2026_DS_Applications | git apply` command). Do the pipeline part in the Infra repo first, or build the UI now with the sample files.
+You received this brief and the sample data with the Apps patch (the Infra walkthrough, last step, shows the `gh pr diff 1 --repo agi1clj/CC2026_DS_Applications | git apply` command). Do the pipeline part in the Infra repo first, or build the UI now with the sample files.
 
 Connect this repository to the **gold** zone of your P2 pipeline. The pipeline writes all three gold files. The backend reads them. The frontend shows a table and charts. You write the code.
 
