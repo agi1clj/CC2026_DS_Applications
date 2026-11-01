@@ -4,6 +4,16 @@ In P2 you build an ETL pipeline (bronze, silver, gold). In this challenge you co
 
 You write the code. This document gives the contract, the tasks and the checklist. It gives no solution.
 
+## Student flow
+
+1. **Infra repository (pipeline).** The template gives you silver and the worked example `daily_energy_by_device.json`. You build `energy_by_location.json` and `latest_readings.json`. You also build one gold file of your own. It must be a time grouping: hour of day, weekday or month.
+2. **Backend.** Read the gold files with the managed identity of the backend. Serve them through new endpoints.
+3. **Frontend.** Show a table and charts from the backend.
+
+`docs/p2-sample-data/gold/` holds the expected content of the first three files. Compare your pipeline output with them. Use them to build the UI before your pipeline works.
+
+Your own extra gold file has no sample. You define its schema and document it in your README. The backend and the frontend must use it too.
+
 ## 1. Goal and architecture
 
 ```mermaid
@@ -62,7 +72,8 @@ Example records:
    - **AWS:** `boto3`. Env: `DATA_BUCKET`, `GOLD_PREFIX` (`gold/`).
 4. If the env variables are not set, read the local sample files. Tests and `docker compose up` must still work with no cloud.
 5. Cache the gold data for a short time (for example 60 seconds). Do not call storage on every request.
-6. Add endpoints, for example: `GET /api/energy/daily` (optional `device_id`), `GET /api/energy/by-location`, `GET /api/readings/latest`. Validate inputs like the existing endpoints do.
+6. Add endpoints, for example: `GET /api/energy/daily` (optional `device_id`), `GET /api/energy/by-location`, `GET /api/readings/latest`. Add an endpoint for your own gold file. Validate inputs like the existing endpoints do.
+   - Daily energy and latest readings take optional `from` and `to` query parameters (ISO date, `YYYY-MM-DD`). An invalid date, or `from` after `to`, returns `422`.
 7. Add tests. Use an injected fake source (`app.dependency_overrides`). No test may call the cloud.
 8. Add the new libraries to `requirements.txt` with pinned versions. Add new settings to `app/config.py`.
 
@@ -71,7 +82,9 @@ Example records:
 1. Keep the table and the device filter. The table shows the latest readings.
 2. Add at least **2 charts**. A small library (for example recharts) or hand-made SVG is fine.
 3. Show a loading state and an error state for each data call.
-4. Keep the backend URL in the runtime `config.js`. Do not hard-code it.
+4. Add a date range control for the charts. It uses the `from` and `to` filters.
+5. Timestamps are UTC ISO 8601. Show them in the local time zone of the user, or write "UTC" next to them.
+6. Keep the backend URL in the runtime `config.js`. Do not hard-code it.
 
 ### Chart ideas
 
@@ -136,6 +149,13 @@ body = boto3.client("s3").get_object(Bucket=bucket, Key=prefix + "latest_reading
 - Do not commit secrets, `.env` files or the Teams webhook URL.
 - Do not call the cloud in tests.
 - Do not change ports 8000 and 8080. Terraform uses them.
+
+## Watch out
+
+- Keep the in-memory source as the default. The P1 tests use it and must still pass.
+- Add `azure-identity`, `azure-storage-blob` and `boto3` to `requirements.txt` with pinned versions.
+- The backend image copies only `backend/`. Decide how the sample files reach the Docker image.
+- The device filter is built from the loaded rows. Daily charts need their own device list (for example from `/api/devices` or from the daily data).
 
 ## 7. Acceptance checklist
 
