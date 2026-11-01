@@ -85,3 +85,16 @@ flowchart LR
 ```
 
 Pull requests run only the test/build job. Azure credentials are never available to pull request runs.
+
+## Part 2: gold data
+
+```mermaid
+flowchart LR
+    gold[("Gold files<br/>Azure Blob: gold/latest/<br/>S3: gold/latest/")]
+    be["Backend (FastAPI)<br/>Azure: managed identity<br/>AWS: instance role<br/>no keys"]
+    fe["Frontend<br/>table, line chart, donut"]
+    gold --> be
+    be -- "/api/energy/daily<br/>/api/energy/by-location<br/>/api/readings/latest" --> fe
+```
+
+The pipeline writes the gold files. The backend reads only `gold/latest/`. Details: [p2/challenge.md](p2/challenge.md).

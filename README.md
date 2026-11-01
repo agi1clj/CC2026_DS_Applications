@@ -37,7 +37,7 @@ backend/
   app/main.py              FastAPI app: endpoints and CORS
   app/config.py            settings from environment variables
   app/models.py            Pydantic models (response schemas)
-  app/data.py              data source interface + in-memory data (P2: swap for Blob Storage)
+  app/data.py              data source interface + in-memory data (P2: gold data, see docs/p2/challenge.md)
   tests/test_api.py        pytest tests
   requirements.txt         runtime dependencies (in the image)
   requirements-dev.txt     + test dependencies (CI and local)
@@ -233,7 +233,7 @@ The exact URLs are printed by the Terraform workflow (*Summary* tab) and by `ter
 
 ## 15. Extending in later project parts
 
-- New data source (P2): implement `MeasurementSource` in `backend/app/data.py` and return it from `get_measurement_source()`. The endpoints and tests do not change, and tests can inject a fake source (`app.dependency_overrides`).
+- New data source (P2): see [docs/p2/challenge.md](docs/p2/challenge.md). Tests can inject a fake source (`app.dependency_overrides`).
 - New setting: add a field to `Settings` in `backend/app/config.py`. In Azure, Terraform sets it through `backend_app_settings`.
 - New public frontend setting (e.g. a sign-in client ID in P3): extend `RuntimeConfig` (`frontend/src/types.ts`) and `docker/40-runtime-config.sh`.
 - New deployable app (e.g. an Azure Function): copy `backend.yml` and adapt the build/deploy steps.
@@ -263,8 +263,10 @@ With the AWS Infra repository (`..._Infra_AWS`), both containers run on **one** 
 
 ## 18. P2: ETL pipeline and gold data
 
-P2 adds a data pipeline (bronze, silver, gold) in the Infra repositories. In this repository, you extend the backend and frontend to show the gold data.
+P2 adds a data pipeline (bronze, silver, gold) in the Infra repositories. Here you extend the backend and the frontend to show the gold data. The brief is [docs/p2/challenge.md](docs/p2/challenge.md).
 
-- Challenge brief: [docs/p2/challenge.md](docs/p2/challenge.md)
-- Sample gold files: `docs/p2/sample-data/gold/latest/`
-- Pipeline steps: `docs/p2/student-walkthrough.md` in `CC2026_LastName_FirstName_Infra` (Azure) or `CC2026_LastName_FirstName_Infra_AWS` (AWS)
+- **Lab 1:** deploy the pipeline (Infra walkthrough: `docs/p2/student-walkthrough.md` in `CC2026_LastName_FirstName_Infra` or `..._Infra_AWS`).
+- **Lab 2:** Teams notification, and the backend reads gold.
+- **Homework:** the frontend (table, device filter and 2 charts).
+- Sample gold files: `docs/p2/sample-data/gold/latest/`. They match the pipeline output, so you can build the app before your pipeline runs.
+- Get the brief and the sample files into your copy: `gh pr diff 1 --repo agi1clj/CC2026_DS_Applications | git apply`
