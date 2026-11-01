@@ -10,7 +10,7 @@ You write the code. This document gives the contract, the tasks and the checklis
 2. **Backend.** Read the gold files with the managed identity of the backend. Serve them through new endpoints.
 3. **Frontend.** Show a table and charts from the backend.
 
-`docs/p2-sample-data/gold/latest/` holds the expected content of the first three files. Compare your pipeline output with them. Use them to build the UI before your pipeline works.
+`docs/p2/sample-data/gold/latest/` holds the expected content of the first three files. Compare your pipeline output with them. Use them to build the UI before your pipeline works.
 
 The bonus gold file has no sample. You define its schema and document it in your README. Serve it in the backend and show it in the frontend.
 
@@ -72,7 +72,7 @@ Example records:
 
 ### Sample files
 
-`docs/p2-sample-data/gold/latest/` holds the three files that the finished pipeline produces for the full dataset. Use them to build the backend and the UI before your pipeline runs. Your own pipeline output must match them.
+`docs/p2/sample-data/gold/latest/` holds the three files that the finished pipeline produces for the full dataset. Use them to build the backend and the UI before your pipeline runs. Your own pipeline output must match them.
 
 ## 3. Required work
 
@@ -302,4 +302,4 @@ Pick a line or bar chart from the ideas list. Compute x and y positions with a s
 | Bonus: date range control and your own gold file with a documented schema. | Bonus |
 | `python -m pytest` and `npm run build` pass. Commits are small and follow Conventional Commits. | Code quality |
 
-The pipeline side is in the Infra repository: see `docs/p2-walkthrough.md` there.
+The pipeline side is in the Infra repository: see `docs/p2/student-walkthrough.md` there.
