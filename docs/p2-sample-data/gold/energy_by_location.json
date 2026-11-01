@@ -1,0 +1,32 @@
+[
+ {
+  "location": "Cafeteria",
+  "total_kwh": 7821.387,
+  "devices": 1,
+  "avg_kwh_per_day": 21.428
+ },
+ {
+  "location": "Lab",
+  "total_kwh": 10296.995,
+  "devices": 1,
+  "avg_kwh_per_day": 28.211
+ },
+ {
+  "location": "Office-A",
+  "total_kwh": 7246.373,
+  "devices": 1,
+  "avg_kwh_per_day": 19.853
+ },
+ {
+  "location": "Server-Room",
+  "total_kwh": 19586.318,
+  "devices": 1,
+  "avg_kwh_per_day": 53.661
+ },
+ {
+  "location": "Workshop",
+  "total_kwh": 7186.407,
+  "devices": 1,
+  "avg_kwh_per_day": 19.689
+ }
+]
