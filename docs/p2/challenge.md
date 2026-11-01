@@ -2,16 +2,13 @@
 
 You received this brief and the sample data with the Apps patch (the Infra walkthrough, last step, shows the `gh pr diff <PR-number> --repo agi1clj/CC2026_DS_Applications | git apply` command). Do the pipeline part in the Infra repo first, or build the UI now with the sample files.
 
-Connect this repository to the **gold** zone of your P2 pipeline. The backend reads three JSON files. The frontend shows a table and charts. You write the code.
+Connect this repository to the **gold** zone of your P2 pipeline. The pipeline writes all three gold files. The backend reads them. The frontend shows a table and charts. You write the code.
 
-1. **Infra repository.** The pipeline gives you `daily_energy_by_device.json` and `latest_readings.json`. You build only `energy_by_location.json`. See "Your part" in `docs/p2/student-walkthrough.md` of the Infra repository.
-2. **Backend.** Read the gold files with the managed identity. Serve them through new endpoints.
-3. **Frontend.** Show a table and charts.
-
-The three files in `docs/p2/sample-data/gold/latest/` are the expected pipeline output. Compare your output with them. Use them to build the app before your pipeline works.
-
-- **Lab 2:** `energy_by_location.json` exists and the backend reads gold.
+- **Lab 1:** deploy the pipeline (Infra walkthrough).
+- **Lab 2:** Teams notification, and the backend reads gold.
 - **Homework:** the frontend (table, device filter and at least 2 charts).
+
+The three files in `docs/p2/sample-data/gold/latest/` are the same as what the pipeline writes. Compare your output with them. Use them to build the app before your pipeline runs.
 
 The backend reads **gold only**.
 
@@ -215,7 +212,7 @@ Optional: hand-made SVG also works, but it takes longer. Pie chart: `<PieChart>`
 
 - Add `from` and `to` (`YYYY-MM-DD`) to the daily and latest endpoints. Return `422` for a bad date or `from` after `to`. `from` is a Python keyword: use `Query(alias="from")`.
 - Add a date range control to the charts.
-- Add your own gold file that groups by time (hour, weekday or month). Document its schema in your README. Serve it and show it.
+- Add your own gold file to the ETL that groups by time (hour, weekday or month). Document its schema in your README. Serve it and show it.
 - Show when the data was generated. List `gold/by-timestamp/` to find the newest run.
 
 Pipeline side: `docs/p2/student-walkthrough.md` (Infra repository).
