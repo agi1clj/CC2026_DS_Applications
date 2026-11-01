@@ -39,27 +39,29 @@ Each run writes three JSON arrays to `gold/by-timestamp/<yyyyMMddTHHmmssZ>/<file
 
 ## 2. Required work
 
+Time: backend about 1 hour, frontend about 2 hours.
 ### Backend (`backend/`)
 
 1. In `app/models.py`, add `kwh` and `location` to `Measurement` (default `None`, so P1 tests pass). Add `DailyEnergy` and `LocationEnergy`.
-2. Add `read_gold()` in `app/gold.py` (section 4).
-3. Add `GoldMeasurementSource` in `app/data.py`. It implements `MeasurementSource` and adds `daily_energy()` and `energy_by_location()`.
-4. Make `get_measurement_source()` return the gold source when `STORAGE_ACCOUNT_URL` or `DATA_BUCKET` is set. Otherwise return the in-memory source.
-5. In `app/main.py`, add `GET /api/energy/daily` (optional `device_id`), `GET /api/energy/by-location` and `GET /api/readings/latest`. Validate inputs like the existing endpoints.
-6. Return `502` with a short message when storage fails. Never return a stack trace.
-7. Add settings to `app/config.py`. Pin `azure-identity`, `azure-storage-blob` and `boto3` in `requirements.txt`.
-8. Test with `app.dependency_overrides[get_measurement_source]` and a fake source. No test calls the cloud.
+2. Copy the three sample files into `backend/app/sample_data/`. They are inside the package, so the Docker image has them with the existing `COPY`.
+3. Add `read_gold()` in `app/gold.py` (section 4). It uses plain `os.getenv`. Do not change `config.py`.
+4. Add `GoldMeasurementSource` and a Protocol `GoldDataSource` in `app/data.py`. Add the dependency `get_gold_source()` that always returns the gold source.
+5. Do **not** use `get_measurement_source()` for the new endpoints. Without cloud variables it returns the in-memory source, and the new endpoints answer 500. Leave it unchanged.
+6. In `app/main.py`, add `GET /api/energy/daily` (optional `device_id`), `GET /api/energy/by-location` and `GET /api/readings/latest`.
+7. Errors: gold files unreadable gives HTTP 502 with a short message. A `device_id` with a bad format gives 422. An unknown `device_id` on the daily endpoint gives 404.
+8. Add to `requirements.txt`: `azure-identity==1.27.0`, `azure-storage-blob==12.31.1`, `boto3==1.43.123`.
+9. Tests, 2 required: one new endpoint with a fake source, and one 404. Override `get_gold_source`. No test calls the cloud. More tests are a bonus.
 
-No keys. **Azure:** `DefaultAzureCredential`. **AWS:** `boto3`.
 ### Frontend (`frontend/src/`)
 
-1. Keep the table and device filter. The table shows the latest readings.
-2. Add `kwh` and `location` to `Measurement` in `types.ts`. Add types for the new endpoints.
-3. Add at least **2 charts** in `components/`. Use SVG or a small library such as recharts.
-4. Show loading and error states for each call. Show timestamps in local time or with "UTC".
-5. Use `API_BASE_URL` from `config.ts`.
-
-**Chart ideas:** kWh per day for one device (line), kWh share per location (donut), temperature against kWh (scatter), kWh by weekday (bar), hourly load (24 bars), top 10 days, monthly totals, cost (kWh x tariff), week-over-week change.
+1. Keep the table and the device filter.
+2. In `api.ts`, change the table call from `/api/data` to `/api/readings/latest`.
+3. In `types.ts`, add `kwh` and `location` to `Measurement`. Add types for the daily and location data.
+4. Install a chart library: `npm i recharts`. Add 2 charts in `components/`: kWh per day for the selected device (line or bar) and kWh per location (pie). Examples are in section 4.
+5. Fetch the daily file once with `/api/energy/daily`. Filter by device in the browser. Do not call the API again for each device.
+6. Show loading and error states for each call. Keep the "UTC" label on timestamps.
+7. Use `API_BASE_URL` from `config.ts`. Keep `useMeasurements`. Add `useFetch` next to it.
+**More chart ideas:** temperature against kWh (scatter), kWh by weekday, hourly load, top 10 days, monthly totals, cost (kWh x tariff).
 
 ## 3. Run it
 
@@ -68,24 +70,23 @@ cd backend && pip install -r requirements-dev.txt && python -m pytest && uvicorn
 cd frontend && npm ci && npm run dev
 docker compose up --build                 # http://localhost:3000
 ```
-With no cloud env variables, the backend reads the sample files. The backend image copies only `backend/`: copy the samples into the image or mount a volume. Document your choice in your README.
 
-**Real cloud data.** Run your pipeline once. Never put keys in files. Terraform in the Infra repository gives the deployed backend its identity and env variables.
+With no cloud variables, the backend reads `app/sample_data/`.
+
+**Real cloud data.** Run your pipeline once. Never put keys in files. Terraform in the Infra repository gives the deployed backend its identity and variables.
 
 - **Azure:** run `az login`. Your user needs *Storage Blob Data Reader*. Set `STORAGE_ACCOUNT_URL=https://<account>.blob.core.windows.net` and `GOLD_CONTAINER=gold`.
-- **AWS:** run `aws login`. Your user needs `s3:GetObject` on `gold/latest/*`. Set `DATA_BUCKET` and `GOLD_PREFIX`.
+- **AWS:** run `aws login`. Your user needs `s3:GetObject` on `gold/latest/*`. Set `DATA_BUCKET` and `GOLD_PREFIX=gold/latest/`.
 
 ## 4. Code
 
 ### Backend: read one gold file (full code)
 
 Save as `backend/app/gold.py`. It reads Azure, AWS or the local samples, and caches for 60 seconds.
-
 ```python
 import json, os, time
 from pathlib import Path
-# Local run only. In Docker this folder is missing: see section 3.
-SAMPLE_DIR = Path(__file__).resolve().parents[2] / "docs" / "p2" / "sample-data" / "gold" / "latest"
+SAMPLE_DIR = Path(__file__).parent / "sample_data"
 CACHE_SECONDS = 60
 _cache: dict[str, tuple[float, list]] = {}
 _azure = _s3 = None
@@ -114,32 +115,48 @@ def read_gold(name: str) -> list:
     return data
 ```
 
-### Backend: source class and endpoint (TODO)
+### Backend: source, dependency and endpoint (TODO)
 
 ```python
+# data.py
+class GoldDataSource(Protocol):
+    def list_measurements(self) -> list[Measurement]: ...
+    def daily_energy(self, device_id: str | None = None) -> list[DailyEnergy]: ...
+    def energy_by_location(self) -> list[LocationEnergy]: ...
+
 class GoldMeasurementSource:
     def list_measurements(self) -> list[Measurement]:
         rows = read_gold("latest_readings.json")
-        # TODO: one Measurement per row (datetime.fromisoformat parses "Z")
-
+        # TODO: one Measurement per row (use model_validate)
     def daily_energy(self, device_id: str | None = None) -> list[DailyEnergy]:
         # TODO: read daily_energy_by_device.json, filter by device_id
-
     def energy_by_location(self) -> list[LocationEnergy]:
         # TODO
+
+_gold_source = GoldMeasurementSource()
+def get_gold_source() -> GoldDataSource:
+    return _gold_source
 ```
 
-`main.py` types `Source` as `MeasurementSource`, which lacks `energy_by_location()`. Add a second Protocol and use it as `GoldSource`.
 ```python
+# main.py: a second alias, with a different name than the Protocol
+GoldDep = Annotated[GoldDataSource, Depends(get_gold_source)]
+
+def read_or_502(read):
+    try:
+        return read()
+    except Exception:
+        raise HTTPException(status_code=502, detail="Cannot read data from storage") from None
+
 @app.get("/api/energy/by-location", response_model=list[LocationEnergy], tags=["energy"])
-def energy_by_location(source: GoldSource) -> list[LocationEnergy]:
-    # TODO: call the source. Catch storage errors and raise HTTPException(502).
+def energy_by_location(source: GoldDep) -> list[LocationEnergy]:
+    return read_or_502(source.energy_by_location)
+# TODO: /api/energy/daily (404 for an unknown device_id) and /api/readings/latest
 ```
 
 ### Frontend: fetch hook (TODO)
 
 `hooks/useMeasurements.ts` and `api.ts` already do this. Copy their error handling.
-
 ```ts
 export function useFetch<T>(path: string) {
   const [data, setData] = useState<T | null>(null)
@@ -155,35 +172,35 @@ export function useFetch<T>(path: string) {
 }
 ```
 
-### Frontend: SVG donut (TODO)
+### Frontend: charts with recharts
 
+Line chart. The y value is `total_kwh` of the selected device, one point per `date`.
 ```tsx
-export function Donut({ slices }: { slices: { label: string; value: number }[] }) {
-  const total = slices.reduce((sum, s) => sum + s.value, 0)
-  const circumference = 2 * Math.PI * 40
-  let offset = 0
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+
+export function DailyChart({ rows }: { rows: DailyEnergy[] }) {
   return (
-    <svg viewBox="0 0 100 100" role="img" aria-label="kWh share per location">
-      {slices.map((s) => {
-        const length = (s.value / total) * circumference
-        offset += length // TODO: one <circle r=40> per slice, own color
-        return null
-      })}
-    </svg>
+    <ResponsiveContainer width="100%" height={260}>
+      <LineChart data={rows}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" minTickGap={40} />
+        <YAxis unit=" kWh" />
+        <Tooltip />
+        <Line type="monotone" dataKey="total_kwh" dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
   )
 }
 ```
 
-Hint: stroke width 20, `strokeDasharray="<length> <rest>"`, `strokeDashoffset={-offset}`, `transform="rotate(-90 50 50)"`. Add the legend as an HTML list.
+Optional: hand-made SVG also works, but it takes longer. Pie chart: `<PieChart>` with `<Pie data={locations} dataKey="total_kwh" nameKey="location" innerRadius={50}>`, one `<Cell fill=...>` per slice, and `<Tooltip />`. Set `innerRadius` for a donut.
 
-Second chart: scale with `x = (value - min) / (max - min) * width`. Draw a `<polyline>` or `<rect>` elements.
 ## 5. Watch out
 
 - Do not read bronze or silver. Do not send 500,000 rows to the browser.
 - Do not use storage keys, connection strings, SAS tokens or AWS access keys. Do not commit secrets.
-- Do not call the cloud in tests. Keep the in-memory source as default: P1 tests use it.
-- Do not change ports 8000 and 8080. Terraform uses them.
-- The device filter uses the loaded rows. Daily charts need their own device list.
+- Do not call the cloud in tests. Do not change ports 8000 and 8080.
+- The device filter uses the loaded rows. Daily charts need their own device list: take it from the daily rows.
 
 ## 6. Acceptance checklist
 
@@ -199,4 +216,4 @@ Second chart: scale with `x = (value - min) / (max - min) * width`. Draw a `<pol
 - Add your own gold file that groups by time (hour, weekday or month). Document its schema in your README. Serve it and show it.
 - Show when the data was generated. List `gold/by-timestamp/` to find the newest run.
 
-Pipeline side: see `docs/p2/student-walkthrough.md` in the Infra repository.
+Pipeline side: `docs/p2/student-walkthrough.md` (Infra repository).
