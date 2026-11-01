@@ -10,8 +10,6 @@ Connect this repository to the **gold** zone of your P2 pipeline. The pipeline w
 
 The three files in `docs/p2/sample-data/gold/latest/` are the same as what the pipeline writes. Compare your output with them. Use them to build the app before your pipeline runs.
 
-The backend reads **gold only**.
-
 ## 1. Data contract
 
 Each run writes three JSON arrays to `gold/by-timestamp/<yyyyMMddTHHmmssZ>/<file>.json` (history) and `gold/latest/<file>.json` (overwritten).
@@ -39,6 +37,7 @@ Each run writes three JSON arrays to `gold/by-timestamp/<yyyyMMddTHHmmssZ>/<file
 ## 2. Required work
 
 Time: backend about 1 hour, frontend about 2 hours.
+
 ### Backend (`backend/`)
 
 1. In `app/models.py`, add `kwh` and `location` to `Measurement` (default `None`, so P1 tests pass). Add `DailyEnergy` and `LocationEnergy`.
@@ -192,13 +191,14 @@ export function DailyChart({ rows }: { rows: DailyEnergy[] }) {
 }
 ```
 
-Optional: hand-made SVG also works, but it takes longer. Pie chart: `<PieChart>` with `<Pie data={locations} dataKey="total_kwh" nameKey="location" innerRadius={50}>`, one `<Cell fill=...>` per slice, and `<Tooltip />`. Set `innerRadius` for a donut.
+Pie chart: `<PieChart>` with `<Pie data={locations} dataKey="total_kwh" nameKey="location" innerRadius={50}>`, one `<Cell fill=...>` per slice, and `<Tooltip />`.
 
 ## 5. Watch out
 
 - Do not read bronze or silver. Do not send 500,000 rows to the browser.
 - Do not use storage keys, connection strings, SAS tokens or AWS access keys. Do not commit secrets.
-- Do not call the cloud in tests. Do not change ports 8000 and 8080.- The device filter uses the loaded rows. Daily charts need their own device list: take it from the daily rows.
+- Do not call the cloud in tests. Do not change ports 8000 and 8080.
+- The device filter uses the loaded rows. Daily charts need their own device list: take it from the daily rows.
 
 ## 6. Acceptance checklist
 
@@ -213,5 +213,3 @@ Optional: hand-made SVG also works, but it takes longer. Pie chart: `<PieChart>`
 - Add a date range control to the charts.
 - Add your own gold file to the ETL that groups by time (hour, weekday or month). Document its schema in your README. Serve it and show it.
 - Show when the data was generated. List `gold/by-timestamp/` to find the newest run.
-
-Pipeline side: `docs/p2/student-walkthrough.md` (Infra repository).
