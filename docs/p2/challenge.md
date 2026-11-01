@@ -199,6 +199,7 @@ Optional: hand-made SVG also works, but it takes longer. Pie chart: `<PieChart>`
 - Do not read bronze or silver. Do not send 500,000 rows to the browser.
 - Do not use storage keys, connection strings, SAS tokens or AWS access keys. Do not commit secrets.
 - Do not call the cloud in tests. Do not change ports 8000 and 8080.
+- On Azure the gold files start with a UTF-8 byte-order mark (BOM). Parse the bytes (`json.loads(data)`) or decode with `utf-8-sig`. A plain `.decode()` then `json.loads` fails with "Unexpected UTF-8 BOM".
 - The device filter uses the loaded rows. Daily charts need their own device list: take it from the daily rows.
 
 ## 6. Acceptance checklist
