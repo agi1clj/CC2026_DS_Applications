@@ -4,6 +4,7 @@ Application repository for the *Cloud Computing* project (UTCN, Master's in Data
 
 > Students: name your copy `CC2026_LastName_FirstName_Apps`. This reference copy is called `CC2026_DS_Applications`.
 > The infrastructure lives in the companion repository `CC2026_LastName_FirstName_Infra`, which also has the full, step-by-step **Student Deployment Walkthrough** (`docs/p1/student-walkthrough.md`).
+> **Part 2 (data pipeline): the brief is [docs/p2/challenge.md](docs/p2/challenge.md). Do the pipeline steps in the Infra repository first.**
 > On **AWS** instead (or as well): `CC2026_LastName_FirstName_Infra_AWS`; see [section 17](#17-aws-elastic-beanstalk).
 
 ## 1. Overview
