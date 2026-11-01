@@ -265,5 +265,5 @@ With the AWS Infra repository (`..._Infra_AWS`), both containers run on **one** 
 P2 adds a data pipeline (bronze, silver, gold) in the Infra repositories. In this repository, you extend the backend and frontend to show the gold data.
 
 - Challenge brief: [docs/p2-challenge.md](docs/p2-challenge.md)
-- Sample gold files: `docs/p2-sample-data/gold/`
+- Sample gold files: `docs/p2-sample-data/gold/latest/`
 - Pipeline steps: `docs/p2-walkthrough.md` in `CC2026_LastName_FirstName_Infra` (Azure) or `CC2026_LastName_FirstName_Infra_AWS` (AWS)

@@ -10,7 +10,7 @@ You write the code. This document gives the contract, the tasks and the checklis
 2. **Backend.** Read the gold files with the managed identity of the backend. Serve them through new endpoints.
 3. **Frontend.** Show a table and charts from the backend.
 
-`docs/p2-sample-data/gold/` holds the expected content of the first three files. Compare your pipeline output with them. Use them to build the UI before your pipeline works.
+`docs/p2-sample-data/gold/latest/` holds the expected content of the first three files. Compare your pipeline output with them. Use them to build the UI before your pipeline works.
 
 The bonus gold file has no sample. You define its schema and document it in your README. Serve it in the backend and show it in the frontend.
 
@@ -25,7 +25,7 @@ The bonus gold file has no sample. You define its schema and document it in your
 ```mermaid
 flowchart LR
     csv[CSV upload] --> etl["P2 pipeline<br/>bronze to silver to gold"]
-    etl --> gold[("gold/*.json<br/>3 small files")]
+    etl --> gold[("gold/latest/*.json<br/>3 small files<br/>(history in gold/by-timestamp/)")]
     gold -- "managed identity" --> be["Backend<br/>FastAPI"]
     be -- "JSON over HTTPS" --> fe["Frontend<br/>React"]
 ```
@@ -38,7 +38,14 @@ The backend reads **gold only**. It never reads bronze or silver. The browser ne
 
 ## 2. Data contract
 
-The pipeline overwrites three JSON files (each is a JSON array) at each run. The paths are `gold/<name>` in the storage account container `gold` (Azure) or under the prefix `gold/` in the bucket (AWS).
+Each pipeline run writes three JSON files (each is a JSON array) twice:
+
+- `gold/by-timestamp/<yyyyMMddTHHmmssZ>/<file>.json`: history, one folder per run.
+- `gold/latest/<file>.json`: overwritten at each run.
+
+**The backend reads only `latest`.** On Azure, the container is `gold` and the blob name is `latest/<file>.json`. On AWS, the key is `gold/latest/<file>.json`.
+
+You will upload the dataset many times while you test. Each run adds a history folder. The backend must never read history. Optional: show in the UI when the data was generated. Bonus: list `by-timestamp/` to find the newest run.
 
 | File | Records (full dataset) | Fields |
 |---|---|---|
@@ -65,7 +72,7 @@ Example records:
 
 ### Sample files
 
-`docs/p2-sample-data/gold/` holds the three files that the finished pipeline produces for the full dataset. Use them to build the backend and the UI before your pipeline runs. Your own pipeline output must match them.
+`docs/p2-sample-data/gold/latest/` holds the three files that the finished pipeline produces for the full dataset. Use them to build the backend and the UI before your pipeline runs. Your own pipeline output must match them.
 
 ## 3. Required work
 
@@ -74,8 +81,8 @@ Example records:
 1. Add `kwh` and `location` to the `Measurement` model. Keep the change additive.
 2. Add a data source that reads the three gold files. Follow the existing `MeasurementSource` idea in `app/data.py`. The endpoints get the source through `get_measurement_source()`.
 3. Read the files with the cloud identity of the backend. No keys.
-   - **Azure:** `azure-identity` (`DefaultAzureCredential`) and `azure-storage-blob`. Env: `STORAGE_ACCOUNT_URL`, `GOLD_CONTAINER` (`gold`).
-   - **AWS:** `boto3`. Env: `DATA_BUCKET`, `GOLD_PREFIX` (`gold/`).
+   - **Azure:** `azure-identity` (`DefaultAzureCredential`) and `azure-storage-blob`. Env: `STORAGE_ACCOUNT_URL`, `GOLD_CONTAINER` (`gold`). The blob name is `latest/<file>.json`.
+   - **AWS:** `boto3`. Env: `DATA_BUCKET`, `GOLD_PREFIX` (`gold/latest/`). The key is the prefix plus the file name.
 4. If the env variables are not set, read the local sample files. Tests and `docker compose up` must still work with no cloud.
 5. Cache the gold data for a short time (for example 60 seconds). Do not call storage on every request.
 6. Add endpoints, for example: `GET /api/energy/daily` (optional `device_id`), `GET /api/energy/by-location`, `GET /api/readings/latest`. Bonus: add an endpoint for your own gold file. Validate inputs like the existing endpoints do.
@@ -121,7 +128,7 @@ For Docker, the sample files must be inside the backend image or mounted as a vo
 Your pipeline must have run at least once. Never put keys in files.
 
 - **Azure:** run `az login`. `DefaultAzureCredential` uses this login. Your user needs the role *Storage Blob Data Reader* (or *Contributor*) on the storage account. Set `STORAGE_ACCOUNT_URL=https://<account>.blob.core.windows.net` and `GOLD_CONTAINER=gold`.
-- **AWS:** run `aws login`. boto3 uses these credentials. Your user needs `s3:GetObject` on `gold/*`. Set `DATA_BUCKET` and `GOLD_PREFIX=gold/`.
+- **AWS:** run `aws login`. boto3 uses these credentials. Your user needs `s3:GetObject` on `gold/latest/*`. Set `DATA_BUCKET` and `GOLD_PREFIX=gold/latest/`.
 
 In Azure and AWS, the Terraform in the Infra repository gives the deployed backend its identity and sets the env variables.
 
@@ -139,7 +146,7 @@ import os
 import time
 from pathlib import Path
 
-SAMPLE_DIR = Path(__file__).resolve().parents[2] / "docs" / "p2-sample-data" / "gold"
+SAMPLE_DIR = Path(__file__).resolve().parents[2] / "docs" / "p2-sample-data" / "gold" / "latest"
 CACHE_SECONDS = 60
 _cache: dict[str, tuple[float, list]] = {}
 _azure = _s3 = None
@@ -154,13 +161,13 @@ def _read_bytes(name: str) -> bytes:
 
             _azure = BlobServiceClient(account_url, credential=DefaultAzureCredential())
         container = os.getenv("GOLD_CONTAINER", "gold")
-        return _azure.get_blob_client(container, name).download_blob().readall()
+        return _azure.get_blob_client(container, f"latest/{name}").download_blob().readall()
     if bucket := os.getenv("DATA_BUCKET"):  # AWS
         if _s3 is None:
             import boto3
 
             _s3 = boto3.client("s3")
-        key = os.getenv("GOLD_PREFIX", "gold/") + name
+        key = os.getenv("GOLD_PREFIX", "gold/latest/") + name
         return _s3.get_object(Bucket=bucket, Key=key)["Body"].read()
     return (SAMPLE_DIR / name).read_bytes()  # local fallback
 

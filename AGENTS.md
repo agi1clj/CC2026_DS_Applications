@@ -7,7 +7,7 @@ Teaching project (UTCN Cloud Computing). Keep changes small and explainable to s
 - `frontend/` React + TypeScript (Vite), served by Nginx on 8080. Backend URL comes from runtime `/config.js`, never from the build.
 - Infrastructure lives in the companion Infra repositories: `..._Infra` (Azure) and `..._Infra_AWS` (AWS).
 - `deploy/aws/` Elastic Beanstalk bundle: `docker-compose.yml` (image placeholders filled by CI) + `proxy/nginx.conf` (routes `/api/*`, `/health` → backend, rest → frontend).
-- P2 challenge brief: `docs/p2-challenge.md`. Students implement it. Keep `docs/p2-sample-data/gold/` in sync with the pipeline contract (field names, rounding, record counts).
+- P2 challenge brief: `docs/p2-challenge.md`. Students implement it. Keep `docs/p2-sample-data/gold/latest/` in sync with the pipeline contract (field names, rounding, record counts).
 
 ## Verify before finishing
 - `cd backend && python -m pytest`
