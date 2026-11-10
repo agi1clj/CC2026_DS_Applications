@@ -1,4 +1,4 @@
-# Backend CI/CD: test -> build image -> push to ACR -> deploy to the backend Web App.
+# Backend CI/CD: test -> build image -> push to ACR -> deploy to the backend app (Container Apps or App Service).
 name: backend
 
 on:
@@ -82,34 +82,52 @@ jobs:
             backend
 
       # The commit SHA tag is immutable and is what gets deployed.
-      # "latest" is only used by Terraform when it creates the Web App for the first time.
+      # "latest" is only used by Terraform when it creates the container app for the first time.
       - name: Push image
         run: |
           docker push "$LOGIN_SERVER/$IMAGE:$TAG"
           docker push "$LOGIN_SERVER/$IMAGE:latest"
 
-      - name: Check that the Web App exists
-        id: webapp
+      - name: Install the Container Apps CLI extension
+        run: az extension add --name containerapp --only-show-errors
+
+      # The Infra repository decides where the app runs: Azure Container Apps (default) or App Service.
+      - name: Find where the app runs
+        id: app
         run: |
-          if az webapp show --resource-group "$RESOURCE_GROUP" --name "$WEBAPP_NAME" --output none 2>/dev/null; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          if az containerapp show --resource-group "$RESOURCE_GROUP" --name "$WEBAPP_NAME" --output none 2>/dev/null; then
+            echo "kind=containerapp" >> "$GITHUB_OUTPUT"
+          elif az webapp show --resource-group "$RESOURCE_GROUP" --name "$WEBAPP_NAME" --output none 2>/dev/null; then
+            echo "kind=webapp" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Web App $WEBAPP_NAME does not exist yet. The image was pushed; run the Terraform workflow with CREATE_WEB_APPS=true to create it."
+            echo "kind=none" >> "$GITHUB_OUTPUT"
+            echo "::notice::App $WEBAPP_NAME does not exist yet. The image was pushed; run the Terraform workflow with CREATE_WEB_APPS=true to create it."
           fi
 
-      - name: Deploy image to the Web App
-        if: steps.webapp.outputs.exists == 'true'
+      - name: Deploy image to the app
+        if: steps.app.outputs.kind != 'none'
         run: |
-          az webapp config set \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "$WEBAPP_NAME" \
-            --linux-fx-version "DOCKER|$LOGIN_SERVER/$IMAGE:$TAG" \
-            --output none
+          if [[ "${{ steps.app.outputs.kind }}" == "containerapp" ]]; then
+            az containerapp update \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$WEBAPP_NAME" \
+              --image "$LOGIN_SERVER/$IMAGE:$TAG" \
+              --output none
+          else
+            az webapp config set \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$WEBAPP_NAME" \
+              --linux-fx-version "DOCKER|$LOGIN_SERVER/$IMAGE:$TAG" \
+              --output none
+          fi
 
       - name: Verify /health reports the new version
-        if: steps.webapp.outputs.exists == 'true'
+        if: steps.app.outputs.kind != 'none'
         run: |
-          HOST="$(az webapp show --resource-group "$RESOURCE_GROUP" --name "$WEBAPP_NAME" --query defaultHostName --output tsv)"
+          if [[ "${{ steps.app.outputs.kind }}" == "containerapp" ]]; then
+            HOST="$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "$WEBAPP_NAME" --query properties.configuration.ingress.fqdn --output tsv)"
+          else
+            HOST="$(az webapp show --resource-group "$RESOURCE_GROUP" --name "$WEBAPP_NAME" --query defaultHostName --output tsv)"
+          fi
           ./scripts/wait-for-version.sh "https://$HOST/health" "$TAG"
           echo "Backend deployed: https://$HOST" >> "$GITHUB_STEP_SUMMARY"

@@ -29,7 +29,7 @@ RUN echo "$APP_VERSION" > /usr/share/nginx/html/version.txt \
     && chmod 0755 /docker-entrypoint.d/40-runtime-config.sh
 USER 101
 
-# Default for local runs; Azure overrides it with an App Service application setting.
+# Default for local runs; Azure overrides it with a container app environment variable.
 ENV API_BASE_URL=http://localhost:8000
 
 EXPOSE 8080

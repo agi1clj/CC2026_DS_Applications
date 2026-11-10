@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Polls a URL until its response body contains the expected version string.
-# Used by the deployment workflows: App Service needs time to pull the new image
+# Used by the deployment workflows: Container Apps needs time to pull the new image
 # and restart the container, so the first requests may fail or return the old version.
 #
 # Usage: scripts/wait-for-version.sh <url> <expected-version> [attempts] [delay-seconds]

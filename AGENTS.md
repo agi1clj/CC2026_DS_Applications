@@ -18,7 +18,7 @@ Teaching project (UTCN Cloud Computing). Keep changes small and explainable to s
 ## Rules
 - No secrets anywhere. Frontend config is public (`window.APP_CONFIG`).
 - Ports are contracts with Terraform and `deploy/aws/`: backend 8000, frontend 8080. Change all of them together.
-- Deployments use image tag `<commit-sha>`; `latest` exists only for first Web App creation (Azure).
+- Deployments use image tag `<commit-sha>`; `latest` exists only for first container app creation (Azure).
 - Azure workflows (`backend.yml`, `frontend.yml`) and the AWS workflow (`deploy-aws.yml`) are independent; each deploys only when its cloud variable is set (`AZURE_CLIENT_ID` / `AWS_DEPLOY_ROLE_ARN`). Never make one depend on the other.
 - Workflows log in with OIDC (`azure/login`, `aws-actions/configure-aws-credentials`, `id-token: write`); do not add publish profiles, client secrets or AWS access keys.
 - Pin dependency versions; keep `package-lock.json` in sync.
