@@ -1,7 +1,7 @@
 # Backend image: FastAPI served by Uvicorn on port 8000.
 FROM python:3.15-slim
 
-# Do not write .pyc files and flush logs immediately (visible in App Service log stream).
+# Do not write .pyc files and flush logs immediately (visible in the Container Apps log stream).
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \

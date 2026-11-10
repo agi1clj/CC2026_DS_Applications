@@ -19,9 +19,9 @@ flowchart TB
     subgraph Azure["Azure subscription"]
         subgraph rg["Resource group rg-cc2026-&lt;initials&gt;-dev"]
             acr[(Azure Container Registry<br/>backend:&lt;sha&gt;, frontend:&lt;sha&gt;)]
-            subgraph plan["App Service Plan (Linux, B1)"]
-                fe["Frontend Web App<br/>Nginx + React (port 8080)"]
-                be["Backend Web App<br/>FastAPI (port 8000)"]
+            subgraph plan["Container Apps environment"]
+                fe["Frontend container app<br/>Nginx + React (port 8080)"]
+                be["Backend container app<br/>FastAPI (port 8000)"]
             end
             id[Managed identity<br/>AcrPull]
         end
@@ -48,11 +48,11 @@ flowchart LR
         end
     end
 
-    subgraph azure["«node» Microsoft Azure – App Service Plan (Linux B1)"]
-        subgraph feapp["«executionEnvironment» Frontend Web App<br/>container: frontend:&lt;sha&gt;"]
+    subgraph azure["«node» Microsoft Azure – Container Apps environment"]
+        subgraph feapp["«executionEnvironment» Frontend container app<br/>container: frontend:&lt;sha&gt;"]
             nginx["«component» Nginx :8080<br/>static files, /config.js, /healthz"]
         end
-        subgraph beapp["«executionEnvironment» Backend Web App<br/>container: backend:&lt;sha&gt;"]
+        subgraph beapp["«executionEnvironment» Backend container app<br/>container: backend:&lt;sha&gt;"]
             api["«component» Uvicorn + FastAPI :8000<br/>/health, /api/data, /docs"]
         end
     end
@@ -68,7 +68,7 @@ flowchart LR
     img1 -. "deployed as" .-> beapp
 ```
 
-App Service terminates TLS on port 443 and forwards traffic to the port given by `WEBSITES_PORT` (8080 frontend, 8000 backend).
+The Container Apps ingress terminates TLS on port 443 and forwards traffic to the target port of each app (8080 frontend, 8000 backend).
 
 ## CI/CD flow
 
@@ -78,9 +78,9 @@ flowchart LR
     test --> login[Azure login<br/>GitHub OIDC]
     login --> build[docker build<br/>tag :sha and :latest]
     build --> pushimg[docker push to ACR]
-    pushimg --> exists{Web App exists?}
+    pushimg --> exists{Container app exists?}
     exists -- no --> notice[Notice: run Terraform<br/>with CREATE_WEB_APPS=true]
-    exists -- yes --> deploy["az webapp config set<br/>DOCKER|acr/image:sha"]
+    exists -- yes --> deploy["az containerapp update<br/>--image acr/image:sha"]
     deploy --> verify[Poll /health or /version.txt<br/>until it returns the sha]
 ```
 
