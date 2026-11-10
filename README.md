@@ -148,7 +148,7 @@ Because frontend and backend have different origins, the backend must allow the 
 |---|---|---|---|
 | `API_BASE_URL` | frontend | `http://localhost:8000` | `https://<backend-app>.<env-domain>` |
 | `CORS_ORIGINS` | backend | `http://localhost:3000` | `https://<frontend-app>.<env-domain>` |
-| `WEBSITES_PORT` | both (Azure only) | – | `8000` backend, `8080` frontend |
+| `WEBSITES_PORT` | both (App Service only; Container Apps uses the ingress target port) | – | `8000` backend, `8080` frontend |
 
 The backend URL is **not** compiled into the JavaScript. When the frontend container starts, `docker/40-runtime-config.sh` writes `/config.js`:
 
