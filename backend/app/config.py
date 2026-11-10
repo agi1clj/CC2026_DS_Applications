@@ -1,8 +1,8 @@
 """Application settings, read once from environment variables.
 
 Add new settings here (e.g. a storage account URL in P2) so every module reads
-configuration the same way. Azure supplies them as App Service application
-settings managed by Terraform; Docker Compose supplies them locally.
+configuration the same way. Azure supplies them as environment
+variables managed by Terraform; Docker Compose supplies them locally.
 """
 
 import os
@@ -19,7 +19,7 @@ class Settings:
     app_name: str = "cc2026-backend"
     # Git commit SHA, baked into the image at build time (see Dockerfile).
     app_version: str = field(default_factory=lambda: os.getenv("APP_VERSION", "local"))
-    # Browser origins allowed to call the API, e.g. "http://localhost:3000,https://<frontend>.azurewebsites.net".
+    # Browser origins allowed to call the API, e.g. "http://localhost:3000,https://<frontend>.<env-domain>".
     cors_origins: list[str] = field(
         default_factory=lambda: _split_csv(os.getenv("CORS_ORIGINS", "http://localhost:3000"))
     )

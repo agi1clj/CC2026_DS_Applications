@@ -13,15 +13,15 @@ Application repository for the *Cloud Computing* project (UTCN, Master's in Data
 | Backend | Python 3.15 + FastAPI | REST API with device measurements (`/api/data`) |
 | Frontend | React 19 + TypeScript + Vite, served by Nginx | Dashboard that fetches and displays the measurements |
 | Packaging | Docker (one image per app) | Same image runs on your laptop and in Azure |
-| Hosting | Azure App Service (Linux containers) | Two Web Apps, each with its own public HTTPS URL |
+| Hosting | Azure Container Apps | Two container apps in one environment, each with its own public HTTPS URL |
 | CI/CD | GitHub Actions + OIDC | Test → build image → push to ACR → deploy, on every push to `main` |
 
 ## 2. Architecture
 
 ```mermaid
 flowchart LR
-    user([Browser]) -- "1. GET page (HTTPS)" --> fe["Frontend Web App<br/>Nginx + React"]
-    user -- "2. GET /api/data (HTTPS, CORS)" --> be["Backend Web App<br/>FastAPI"]
+    user([Browser]) -- "1. GET page (HTTPS)" --> fe["Frontend container app<br/>Nginx + React"]
+    user -- "2. GET /api/data (HTTPS, CORS)" --> be["Backend container app<br/>FastAPI"]
     gha[GitHub Actions] -- push images --> acr[(Azure Container Registry)]
     acr -- pull images --> fe
     acr -- pull images --> be
@@ -138,7 +138,7 @@ curl -i 'http://localhost:8000/api/data/BAD_ID!'        # 422 validation error
 
 ## 9. Frontend ↔ backend communication
 
-The React code runs **in your browser**, not inside Docker. So the browser must call the backend at a URL it can reach (`http://localhost:8000` locally, `https://<backend>.azurewebsites.net` in Azure). Docker's internal name `http://backend:8000` would not work from the browser.
+The React code runs **in your browser**, not inside Docker. So the browser must call the backend at a URL it can reach (`http://localhost:8000` locally, `https://<backend>.<env-domain>` in Azure). Docker's internal name `http://backend:8000` would not work from the browser.
 
 Because frontend and backend have different origins, the backend must allow the frontend's origin through **CORS** (`CORS_ORIGINS`).
 
@@ -146,14 +146,14 @@ Because frontend and backend have different origins, the backend must allow the 
 
 | Variable | App | Local value (Compose) | Azure value (set by Terraform) |
 |---|---|---|---|
-| `API_BASE_URL` | frontend | `http://localhost:8000` | `https://<backend-app>.azurewebsites.net` |
-| `CORS_ORIGINS` | backend | `http://localhost:3000` | `https://<frontend-app>.azurewebsites.net` |
+| `API_BASE_URL` | frontend | `http://localhost:8000` | `https://<backend-app>.<env-domain>` |
+| `CORS_ORIGINS` | backend | `http://localhost:3000` | `https://<frontend-app>.<env-domain>` |
 | `WEBSITES_PORT` | both (Azure only) | – | `8000` backend, `8080` frontend |
 
 The backend URL is **not** compiled into the JavaScript. When the frontend container starts, `docker/40-runtime-config.sh` writes `/config.js`:
 
 ```js
-window.APP_CONFIG = { API_BASE_URL: "https://cc2026-api-agi-dev-1a2b.azurewebsites.net" };
+window.APP_CONFIG = { API_BASE_URL: "https://cc2026-api-agi-dev-1a2b.<env-domain>" };
 ```
 
 `index.html` loads `config.js` before the React bundle, so the same image works everywhere. Only public values go there; the browser can read everything in it.
@@ -170,11 +170,11 @@ A push that changes only documentation starts no workflow. The `deploy` job runs
 The `deploy` job:
 1. Signs in to Azure with **OIDC** (`azure/login`). GitHub issues a short-lived token that Azure trusts, so no password or secret is stored.
 2. `az acr login` and `docker build --build-arg APP_VERSION=<sha>`.
-3. Pushes `<image>:<commit-sha>` (immutable, deployed) and `<image>:latest` (only used when Terraform first creates the Web App).
-4. Points the Web App at the new tag: `az webapp config set --linux-fx-version "DOCKER|<acr>/<image>:<sha>"`.
+3. Pushes `<image>:<commit-sha>` (immutable, deployed) and `<image>:latest` (only used when Terraform first creates the container app).
+4. Points the app at the new tag: `az containerapp update --image <acr>/<image>:<sha>` (new revision). On the older App Service hosting it runs `az webapp config set --linux-fx-version "DOCKER|<acr>/<image>:<sha>"` instead; the workflow detects which one exists.
 5. Polls `/health` (backend) or `/version.txt` (frontend) until the new commit SHA is served (up to ~10–15 minutes).
 
-If the Web App does not exist yet (first deployment), steps 4–5 are skipped with a notice.
+If the container app does not exist yet (first deployment), steps 4–5 are skipped with a notice.
 
 **GitHub variables used** (set by `bootstrap.sh` in the Infra repo; *Settings → Secrets and variables → Actions → Variables*):
 
@@ -189,15 +189,15 @@ If the Web App does not exist yet (first deployment), steps 4–5 are skipped wi
 
 Ownership is split on purpose:
 
-- **Terraform** (Infra repo) creates the registry, the Web Apps and their settings. It sets the *initial* image (`:latest`) and then ignores later image changes (`ignore_changes` on the image name only).
+- **Terraform** (Infra repo) creates the registry, the Container Apps environment, the container apps and their settings. It sets the *initial* image (`:latest`) and then ignores later image changes (`ignore_changes` on the image only).
 - **These workflows** decide *which* image version runs (`:<commit-sha>`).
 
-To roll back, point the Web App at an older image that is still in ACR (every deployed commit has its `:<sha>` tag):
+To roll back, point the container app at an older image that is still in ACR (every deployed commit has its `:<sha>` tag):
 
 ```bash
 az acr repository show-tags --name <acr-name> --repository backend --orderby time_desc --output table
-az webapp config set --resource-group <rg> --name <backend-webapp> \
-  --linux-fx-version "DOCKER|<acr-name>.azurecr.io/backend:<old-sha>"
+az containerapp update --resource-group <rg> --name <backend-app> \
+  --image <acr-name>.azurecr.io/backend:<old-sha>
 ```
 
 Re-running an older workflow run also works, but it rebuilds the image from source (base images may have changed) and overwrites `:latest`. The next push to `main` deploys the newest commit again.
@@ -206,29 +206,29 @@ Re-running an older workflow run also works, but it rebuilds the image from sour
 
 After deployment (names include your initials and a 4-character suffix):
 
-- Frontend: `https://cc2026-ui-<initials>-dev-<suffix>.azurewebsites.net`
-- Backend: `https://cc2026-api-<initials>-dev-<suffix>.azurewebsites.net/api/data`
-- API docs: `https://cc2026-api-<initials>-dev-<suffix>.azurewebsites.net/docs`
+- Frontend: `https://cc2026-ui-<initials>-dev-<suffix>.<env-domain>`
+- Backend: `https://cc2026-api-<initials>-dev-<suffix>.<env-domain>/api/data`
+- API docs: `https://cc2026-api-<initials>-dev-<suffix>.<env-domain>/docs`
 
 The exact URLs are printed by the Terraform workflow (*Summary* tab) and by `terraform output`.
 
 | Reference deployment | URL |
 |---|---|
-| Frontend | https://cc2026-ui-agi-dev-465d.azurewebsites.net |
-| Backend | https://cc2026-api-agi-dev-465d.azurewebsites.net/api/data |
-| API docs | https://cc2026-api-agi-dev-465d.azurewebsites.net/docs |
+| Frontend | https://cc2026-ui-agi-dev-465d.<env-domain> |
+| Backend | https://cc2026-api-agi-dev-465d.<env-domain>/api/data |
+| API docs | https://cc2026-api-agi-dev-465d.<env-domain>/docs |
 
 ## 14. Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Dashboard: "Cannot reach the backend at …" | Backend down, wrong `API_BASE_URL`, or CORS | Open `<frontend>/config.js` and check the URL; open `<backend>/health`; check `CORS_ORIGINS` on the backend Web App |
+| Dashboard: "Cannot reach the backend at …" | Backend down, wrong `API_BASE_URL`, or CORS | Open `<frontend>/config.js` and check the URL; open `<backend>/health`; check `CORS_ORIGINS` on the backend container app |
 | Browser console: `blocked by CORS policy` | Frontend origin not in `CORS_ORIGINS` | The origin must match exactly (scheme + host, no trailing slash) |
 | `docker compose up` fails: port is already allocated | Port 3000/8000 in use | Set other ports in `.env` (see `.env.example`) |
 | Workflow fails at **Azure login** with `AADSTS70021`/`AADSTS700213` | Federated credential subject does not match | Workflow must run on `main` of the exact repository configured by bootstrap; re-run bootstrap if you renamed the repo |
 | Workflow fails at `az acr login` | `ACR_NAME` variable missing or registry not created yet | Run the Infra `terraform` workflow first |
-| Verify step times out | Container failed to start | Azure portal → Web App → *Log stream*, or `az webapp log tail -g <rg> -n <app>` |
-| Web App shows "Application Error" right after creation | Image pull still in progress or role propagation | Wait 2–5 minutes, then *Restart* the Web App |
+| Verify step times out | Container failed to start | Azure portal → Container App → *Log stream*, or `az containerapp logs show -g <rg> -n <app> --follow` |
+| Container app shows no ready replica right after creation | Image pull still in progress or role propagation | Wait 2–5 minutes; check *Revisions and replicas* in the portal |
 
 ## 15. Extending in later project parts
 
