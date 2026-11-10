@@ -91,7 +91,7 @@ jobs:
       - name: Install the Container Apps CLI extension
         run: az extension add --name containerapp --only-show-errors
 
-      # The Infra repository decides where the app runs: Azure Container Apps (default) or App Service.
+      # The Infra repository decides where the app runs: Azure Container Apps or App Service.
       - name: Find where the app runs
         id: app
         run: |
